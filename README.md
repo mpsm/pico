@@ -5,11 +5,16 @@ Pi Pico development board.
 
 ## Installing
 
-Clone the repo with submodules:
+Simply run:
+```
+curl https://raw.githubusercontent.com/mpsm/pico/main/install.sh | bash
+```
+
+You can also clone the repo with submodules:
 ```
 git clone --recurse-submodules https://github.com/mpsm/pico
 ```
-and run the installation script
+and run the installation script manually:
 ```
 ./install.sh
 ```
