@@ -10,3 +10,7 @@
 [submodule "picotool"]
 	path = picotool
 	url = https://github.com/raspberrypi/picotool
+[submodule "openocd"]
+	path = openocd
+	url = https://github.com/raspberrypi/openocd
+	branch = picoprobe

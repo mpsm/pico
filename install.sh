@@ -38,6 +38,12 @@ else
     echo "Found picotool ($(which picotool)), skipping."
 fi
 
+if ! check_binary openocd; then
+    PICO_INSTALL_OPENOCD=1
+else
+    echo "Found openocd $(which openocd)), skipping."
+fi
+
 # default values of setup settings
 : ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
 : ${PICO_REPO_PATH="${HOME}/pico"}
@@ -71,7 +77,7 @@ if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
     fi
 fi
 
-if [! -d ${PICO_BINARY_PATH} ]; then
+if [ ! -d ${PICO_BINARY_PATH} ]; then
     mkdir -p ${PICO_BINARY_PATH}
 fi
 
@@ -100,9 +106,15 @@ install_packages() {
         fi
     done
 
+    # TODO - refactor library checking
     # check for libusb
-    if [ $(apt -qq list libusb-1.0-0-dev | grep installed | wc -l) -eq 0 ]; then
+    if [ $(apt -qq list libusb-1.0-0-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
         to_install+=(libusb-1.0-0-dev)
+    fi
+
+    # check for hidapi
+    if [ $(apt -qq list libhidapi-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
+        to_install+=(libhidapi-dev)
     fi
 
     # install packages with tools that were not found
@@ -218,4 +230,12 @@ if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
+fi
+
+# build and install openocd
+if [ ! -z ${PICO_INSTALL_OPENOCD} ]; then
+    openocd_install_path="$(dirname ${PICO_BINARY_PATH})"
+    openocd_config="--enable-cmsis-dap --enable-picoprobe --prefix=${openocd_install_path}"
+    openocd_path=${PICO_REPO_PATH}/openocd
+    cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc) && make install
 fi
