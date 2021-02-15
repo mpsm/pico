@@ -148,6 +148,13 @@ install_toolchain() {
     echo "Tolchain installation done. You need to relogin."
 }
 
+build() {
+    target=$1
+
+    echo "Building ${target}"
+    cmake -S ${PICO_REPO_PATH}/${target} -B ${PICO_REPO_PATH}/build/${target} -G Ninja && cmake --build ${PICO_REPO_PATH}/build/${target}
+}
+
 # installation process - check for packages
 install_packages
 
@@ -163,7 +170,6 @@ fi
 
 # setup paths
 export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
-PICO_EXAMPLES_PATH="${PICO_REPO_PATH}/examples"
 
 # install toolchain
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
@@ -172,8 +178,7 @@ fi
 
 # build examples
 if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
-    echo "Building examples"
-    cmake -S ${PICO_EXAMPLES_PATH} -B ${PICO_REPO_PATH}/build/examples -G Ninja && cmake --build ${PICO_REPO_PATH}/build/examples
+    build examples
     mkdir -p uf2/examples
     find ${PICO_REPO_PATH}/build/examples -name "*.uf2" | xargs -I"{}" cp "{}" ${PICO_REPO_PATH}/uf2/examples
 else
@@ -185,15 +190,14 @@ if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
     if [ -f ${PICO_BINARY_PATH}/picotool ]; then
         echo "Picotool exists at installation path, skipping."
     else
-        echo "Building picotool"
-        cmake -S ${PICO_REPO_PATH}/picotool -B ${PICO_REPO_PATH}/build/picotool -G Ninja && cmake --build ${PICO_REPO_PATH}/build/picotool
+        build picotool
         cp ${PICO_REPO_PATH}/build/picotool/picotool ${PICO_BINARY_PATH}
     fi
 fi
 
 # build picoprobe
 if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
-    cmake -S ${PICO_REPO_PATH}/picoprobe -B ${PICO_REPO_PATH}/build/picoprobe -G Ninja && cmake --build ${PICO_REPO_PATH}/build/picoprobe
+    build picoprobe
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
