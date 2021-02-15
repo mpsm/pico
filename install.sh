@@ -190,7 +190,7 @@ fi
 # build examples
 if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
     build examples
-    mkdir -p uf2/examples
+    mkdir -p ${PICO_REPO_PATH}/uf2/examples
     find ${PICO_REPO_PATH}/build/examples -name "*.uf2" | xargs -I"{}" cp "{}" ${PICO_REPO_PATH}/uf2/examples
 else
     echo "Found examples dir, skipping."
@@ -209,6 +209,7 @@ fi
 # build picoprobe
 if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     build picoprobe
+    mkdir -p${PICO_REPO_PATH}/uf2/
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
