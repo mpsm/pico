@@ -100,6 +100,11 @@ install_packages() {
         fi
     done
 
+    # check for libusb
+    if [ $(apt -qq list libusb-1.0-0-dev | grep installed | wc -l) -eq 0 ]; then
+        to_install+=(libusb-1.0-0-dev)
+    fi
+
     # install packages with tools that were not found
     if [ ${#to_install[*]} -eq 0 ]; then
         echo "All required tools found, skipping."
