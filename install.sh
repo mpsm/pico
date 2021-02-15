@@ -44,6 +44,10 @@ if [ ! -z ${PICO_CLONE_REPO} ]; then
         PICO_REPO_PATH="${userinput}"
     fi
 fi
+if [ -d ${PICO_REPO_PATH} ]; then
+    echo "Directory ${PICO_REPO_PATH} not empty, skipping clone."
+fi
+
 
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
     echo -n "Path to install the toolchain to [${PICO_TOOLCHAIN_PATH}]: "
@@ -118,7 +122,7 @@ install_toolchain() {
     esac
 
     # install bash anyway
-    if [ $(grep '${bindir}' '${HOME}/.bashrc' | wc -l)  -eq 0 ]; then
+    if [ $(grep "${bindir}" "${HOME}/.bashrc" | wc -l)  -eq 0 ]; then
         echo "export PATH=\"${bindir}:\$PATH\"" >> ${HOME}/.bashrc
     fi
     
