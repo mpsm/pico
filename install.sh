@@ -214,7 +214,7 @@ fi
 # build picoprobe
 if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     build picoprobe
-    mkdir -p${PICO_REPO_PATH}/uf2/
+    mkdir -p ${PICO_REPO_PATH}/uf2/
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
