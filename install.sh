@@ -1,6 +1,19 @@
 #!/usr/bin/bash
 
+# check if executing from the repository
+scriptname="$(basename $0)"
+if [ ${scriptname} == "bash" ]; then
+    PICO_CLONE_REPO=1
+else
+    if [ ! -d "$(dirname $0)/.git" ]; then
+        PICO_CLONE_REPO=1
+    else
+        PICO_REPO_PATH="$(realpath $(dirname $0))"
+    fi
+fi
+
 # local variables
+PICO_REPO_URL="https://github.com/mpsm/pico"
 PICO_TOOLCHAIN_NAME="arm-none-eabi"
 PICO_TOOLCHAIN_LINK="https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2"
 PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
@@ -16,13 +29,22 @@ check_binary() {
 if ! check_binary ${PICO_TOOLCHAIN_NAME}-gcc; then
     PICO_INSTALL_TOOLCHAIN=1
 else
-    echo "Found toolchain at: $(dirname $(which ${PICO_TOOLCHAIN_NAME}-gcc)), skipping install"
+    echo "Found toolchain at: $(dirname $(which ${PICO_TOOLCHAIN_NAME}-gcc)), skipping toolchain install."
 fi
 
 # default values of setup settings
 : ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
+: ${PICO_REPO_PATH="${HOME}/pico"}
 
 # setup
+if [ ! -z ${PICO_CLONE_REPO} ]; then
+    echo -n "Path to install the SDK to [${PICO_REPO_PATH}]: "
+    read userinput
+    if [ ! -z ${userinput} ]; then
+        PICO_REPO_PATH="${userinput}"
+    fi
+fi
+
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
     echo -n "Path to install the toolchain to [${PICO_TOOLCHAIN_PATH}]: "
     read userinput
@@ -38,6 +60,7 @@ install_packages() {
     declare -a pico_packages=(
         "cmake cmake"
         "gcc build-essential"
+        "git git"
         "ninja ninja-build"
     )
     declare -a to_install
@@ -105,6 +128,16 @@ install_toolchain() {
 
 # installation process - check for packages
 install_packages
+
+# clone the repo
+if [ ! -z ${PICO_CLONE_REPO} ]; then
+    echo "Cloning the bundle repository"
+    git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
+else
+    # make sure submodules are up to date
+    echo "Making sure submodules are up to date"
+    git submodule update --init --recursive
+fi
 
 # install toolchain
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
