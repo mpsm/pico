@@ -32,9 +32,16 @@ else
     echo "Found toolchain at: $(dirname $(which ${PICO_TOOLCHAIN_NAME}-gcc)), skipping toolchain install."
 fi
 
+if ! check_binary picotool; then
+    PICO_INSTALL_PICOTOOL=1
+else
+    echo "Found picotool ($(which picotool)), skipping."
+fi
+
 # default values of setup settings
 : ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
 : ${PICO_REPO_PATH="${HOME}/pico"}
+: ${PICO_BINARY_PATH="${HOME}/.local/bin"}
 
 # setup
 if [ ! -z ${PICO_CLONE_REPO} ]; then
@@ -48,13 +55,24 @@ if [ -d ${PICO_REPO_PATH} ]; then
     echo "Directory ${PICO_REPO_PATH} not empty, skipping clone."
 fi
 
-
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
     echo -n "Path to install the toolchain to [${PICO_TOOLCHAIN_PATH}]: "
     read userinput
     if [ ! -z ${userinput} ]; then
         PICO_TOOLCHAIN_PATH="${userinput}"
     fi
+fi
+
+if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
+    echo -n "Path to install tools to [${PICO_BINARY_PATH}]: "
+    read userinput
+    if [ ! -z ${userinput} ]; then
+        PICO_BINARY_PATH=${userinput}
+    fi
+fi
+
+if [! -d ${PICO_BINARY_PATH} ]; then
+    mkdir -p ${PICO_BINARY_PATH}
 fi
 
 # installation helper methods
@@ -153,7 +171,22 @@ if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
 fi
 
 # build examples
-echo "Building examples"
-cmake -S ${PICO_EXAMPLES_PATH} -B ${PICO_REPO_PATH}/build/examples -G Ninja && cmake --build ${PICO_REPO_PATH}/build/examples
-mkdir -p uf2/examples
-find ${PICO_REPO_PATH}/build/examples -name "*.uf2" | xargs -I"{}" cp "{}" uf2/examples
+if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
+    echo "Building examples"
+    cmake -S ${PICO_EXAMPLES_PATH} -B ${PICO_REPO_PATH}/build/examples -G Ninja && cmake --build ${PICO_REPO_PATH}/build/examples
+    mkdir -p uf2/examples
+    find ${PICO_REPO_PATH}/build/examples -name "*.uf2" | xargs -I"{}" cp "{}" ${PICO_REPO_PATH}/uf2/examples
+else
+    echo "Found examples dir, skipping."
+fi
+
+# build tools
+if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
+    if [ -f ${PICO_BINARY_PATH}/picotool ]; then
+        echo "Picotool exists at installation path, skipping."
+    else
+        echo "Building picotool"
+        cmake -S ${PICO_REPO_PATH}/picotool -B ${PICO_REPO_PATH}/build/picotool -G Ninja && cmake --build ${PICO_REPO_PATH}/build/picotool
+        cp ${PICO_REPO_PATH}/build/picotool/picotool ${PICO_BINARY_PATH}
+    fi
+fi

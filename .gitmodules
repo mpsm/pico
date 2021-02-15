@@ -7,3 +7,6 @@
 [submodule "picoprobe"]
 	path = picoprobe
 	url = https://github.com/raspberrypi/picoprobe
+[submodule "picotool"]
+	path = picotool
+	url = https://github.com/raspberrypi/picotool
