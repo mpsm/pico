@@ -123,8 +123,17 @@ install_toolchain() {
         cd ${PICO_TOOLCHAIN_PATH} && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj
     fi
 
-    echo "Setting up toolchain path"
-    bindir="${PICO_TOOLCHAIN_PATH}/${PICO_TOOLCHAIN_VERSION}//bin"
+    echo "Tolchain installation done."
+}
+
+setup_paths()
+{
+    echo "Setting up paths"
+
+    bindir="${PICO_TOOLCHAIN_PATH}/${PICO_TOOLCHAIN_VERSION}/bin"
+    export PATH="${bindir}:${PATH}"
+    export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
+
     case ${SHELL} in
         */fish)
             fishconfd="${HOME}/.config/fish/conf.d"
@@ -132,20 +141,22 @@ install_toolchain() {
                 mkdir -p ${fishconfd}
             fi
             
-            fishconfig="${fishconfd}/path-${PICO_TOOLCHAIN_NAME}.fish"
+            fishconfig="${fishconfd}/pico.fish"
             if [ ! -f ${fishconfig} ]; then
-                echo "set -g -x PATH \$PATH \"${bindir}\"" > ${fishconfd}/path-${PICO_TOOLCHAIN_NAME}.fish
+                echo "set -g -x PATH \$PATH \"${bindir}\"" > ${fishconfig}
+                echo "set -g -x PICO_SDK_PATH \"${PICO_SDK_PATH}\"" >> ${fishconfig}
             fi
             ;;
     esac
 
     # install bash anyway
-    if [ $(grep "${bindir}" "${HOME}/.bashrc" | wc -l)  -eq 0 ]; then
+    if [ $(grep "${bindir}" "${HOME}/.bashrc" | wc -l) -eq 0 ]; then
         echo "export PATH=\"${bindir}:\$PATH\"" >> ${HOME}/.bashrc
     fi
-    
-    export PATH="${bindir}:${PATH}"
-    echo "Tolchain installation done. You need to relogin."
+
+    if [ $(grep PICO_SDK_PATH "${HOME}/.bashrc" | wc -l) -eq 0 ]; then
+        echo "export PICO_SDK_PATH=\"${PICO_SDK_PATH}\"" >> ${HOME}/.bashrc
+    fi
 }
 
 build() {
@@ -169,7 +180,7 @@ else
 fi
 
 # setup paths
-export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
+setup_paths
 
 # install toolchain
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
