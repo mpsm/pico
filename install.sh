@@ -190,3 +190,11 @@ if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
         cp ${PICO_REPO_PATH}/build/picotool/picotool ${PICO_BINARY_PATH}
     fi
 fi
+
+# build picoprobe
+if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
+    cmake -S ${PICO_REPO_PATH}/picoprobe -B ${PICO_REPO_PATH}/build/picoprobe -G Ninja && cmake --build ${PICO_REPO_PATH}/build/picoprobe
+    cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
+else
+    echo "Picoprobe exists, skipping."
+fi
