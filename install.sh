@@ -5,10 +5,18 @@ PICO_TOOLCHAIN_NAME="arm-none-eabi"
 PICO_TOOLCHAIN_LINK="https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2"
 PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
 
+# various helper methods
+check_binary() {
+    binary_name=$1
+    which ${binary_name} > /dev/null
+    return $?
+}
+
 # setup installation steps
-which ${PICO_TOOLCHAIN_NAME}-gcc > /dev/null
-if [ $? -ne 0 ]; then
+if ! check_binary ${PICO_TOOLCHAIN_NAME}-gcc; then
     PICO_INSTALL_TOOLCHAIN=1
+else
+    echo "Found toolchain at: $(dirname $(which ${PICO_TOOLCHAIN_NAME}-gcc)), skipping install"
 fi
 
 # default values of setup settings
@@ -24,6 +32,40 @@ if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
 fi
 
 # installation helper methods
+install_packages() {
+    echo "Checking for required packages"
+
+    declare -a pico_packages=(
+        "cmake cmake"
+        "gcc build-essential"
+        "ninja ninja-build"
+    )
+    declare -a to_install
+
+    # look for the required tools, build list of packages to install
+    for package in "${pico_packages[@]}"
+    do
+        read binary package_name <<< $package
+        echo -n "Checking for application: $binary ... "
+        if check_binary $binary; then
+            echo "found"
+        else
+            echo "not found"
+            to_install+=(${package_name})
+        fi
+    done
+
+    # install packages with tools that were not found
+    if [ ${#to_install[*]} -eq 0 ]; then
+        echo "All required tools found, skipping."
+    else
+        echo "Installing: ${to_install[*]}"
+        set -x
+        sudo apt-get install -qq --yes ${to_install[*]}
+        set +x
+    fi
+}
+
 install_toolchain() {
     echo "Installing the toolchain... "
     if [ ! -d ${PICO_TOOLCHAIN_PATH} ]; then
@@ -58,12 +100,13 @@ install_toolchain() {
     fi
     
     export PATH="${bindir}:${PATH}"
-    echo "Tolchain installation done."
+    echo "Tolchain installation done. You need to relogin."
 }
 
-# installation process
+# installation process - check for packages
+install_packages
+
+# install toolchain
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
     install_toolchain
 fi
-
-echo "Finished. Re-login to refresh environmental variables."
