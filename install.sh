@@ -143,7 +143,17 @@ else
     git submodule update --init --recursive
 fi
 
+# setup paths
+export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
+PICO_EXAMPLES_PATH="${PICO_REPO_PATH}/examples"
+
 # install toolchain
 if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
     install_toolchain
 fi
+
+# build examples
+echo "Building examples"
+cmake -S ${PICO_EXAMPLES_PATH} -B ${PICO_REPO_PATH}/build/examples -G Ninja && cmake --build ${PICO_REPO_PATH}/build/examples
+mkdir -p uf2/examples
+find ${PICO_REPO_PATH}/build/examples -name "*.uf2" | xargs -I"{}" cp "{}" uf2/examples
