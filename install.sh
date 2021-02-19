@@ -18,6 +18,11 @@ PICO_TOOLCHAIN_NAME="arm-none-eabi"
 PICO_TOOLCHAIN_LINK="https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2"
 PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
 
+# default values of setup settings
+: ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
+: ${PICO_REPO_PATH="${HOME}/pico"}
+: ${PICO_BINARY_PATH="${HOME}/.local/bin"}
+
 # various helper methods
 check_binary() {
     binary_name=$1
@@ -25,60 +30,82 @@ check_binary() {
     return $?
 }
 
-# setup installation steps
-if ! check_binary ${PICO_TOOLCHAIN_NAME}-gcc; then
-    PICO_INSTALL_TOOLCHAIN=1
-else
-    echo "Found toolchain at: $(dirname $(which ${PICO_TOOLCHAIN_NAME}-gcc)), skipping toolchain install."
-fi
+declare -a pico_install_steps
+declare -a debs_to_install
 
-if ! check_binary picotool; then
-    PICO_INSTALL_PICOTOOL=1
-else
-    echo "Found picotool ($(which picotool)), skipping."
-fi
-
-if ! check_binary openocd; then
-    PICO_INSTALL_OPENOCD=1
-else
-    echo "Found openocd $(which openocd)), skipping."
-fi
-
-# default values of setup settings
-: ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
-: ${PICO_REPO_PATH="${HOME}/pico"}
-: ${PICO_BINARY_PATH="${HOME}/.local/bin"}
-
-# setup
-if [ ! -z ${PICO_CLONE_REPO} ]; then
-    echo -n "Path to install the SDK to [${PICO_REPO_PATH}]: "
-    read userinput
-    if [ ! -z ${userinput} ]; then
-        PICO_REPO_PATH="${userinput}"
+setup_install_step() {
+    # setup user-friendly name
+    if [ ! -z $3 ]; then
+        name="$3"
+    else
+        name="$1"
     fi
-fi
-if [ -d ${PICO_REPO_PATH} ]; then
-    echo "Directory ${PICO_REPO_PATH} not empty, skipping clone."
-fi
 
-if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
-    echo -n "Path to install the toolchain to [${PICO_TOOLCHAIN_PATH}]: "
-    read userinput
-    if [ ! -z ${userinput} ]; then
-        PICO_TOOLCHAIN_PATH="${userinput}"
+    # check binary existence in the system
+    if check_binary $1; then
+        found=1
+    else
+        found=0
     fi
-fi
 
-if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
-    echo -n "Path to install tools to [${PICO_BINARY_PATH}]: "
-    read userinput
-    if [ ! -z ${userinput} ]; then
-        PICO_BINARY_PATH=${userinput}
+    # get user decision
+    while :; do
+        echo -n "Install $name?"
+        if [ $found -ne 1 ]; then
+            echo -n "[Y/n"
+        else
+            echo -n " Found at: $(dirname $(which $1)) [y/N"
+        fi
+        echo -n "] "
+
+        read userinput
+        if [ -z "$userinput" ]; then
+            decision=$((1-$found))
+            break
+        fi
+
+        case "$userinput" in
+        [Yy])
+            decision=1
+            break
+            ;;
+        [Nn])
+            decision=0
+            break
+            ;;
+        esac
+    done
+    
+    # add install step if decision is positive
+    if [ $decision -eq 1 ]; then
+        if [ ! -z "$2" ]; then
+            echo -n "Install path for $name [$2]: "
+            read userinput
+            if [ -z "${userinput}" ]; then
+                path=$2
+            else
+                path=${userinput}
+            fi
+            pico_install_steps+=("install_$name $path")
+        else
+            pico_install_steps+=("install_$name")
+        fi
+        readonly install_$name=1
+    else
+        readonly install_$name=0
     fi
-fi
 
-if [ ! -d ${PICO_BINARY_PATH} ]; then
-    mkdir -p ${PICO_BINARY_PATH}
+    return $decision
+}
+
+# setup install steps
+setup_install_step ${PICO_TOOLCHAIN_NAME}-gcc ${PICO_TOOLCHAIN_PATH} "toolchain"
+setup_install_step openocd ${PICO_BINARY_PATH}
+setup_install_step picotool ${PICO_BINARY_PATH}
+setup_install_step code
+
+if [ $install_code -eq 1 ]; then
+    debs_to_install+=("code")
 fi
 
 # installation helper methods
@@ -91,7 +118,6 @@ install_packages() {
         "git git"
         "ninja ninja-build"
     )
-    declare -a to_install
 
     # look for the required tools, build list of packages to install
     for package in "${pico_packages[@]}"
@@ -102,28 +128,28 @@ install_packages() {
             echo "found"
         else
             echo "not found"
-            to_install+=(${package_name})
+            debs_to_install+=(${package_name})
         fi
     done
 
     # TODO - refactor library checking
     # check for libusb
     if [ $(apt -qq list libusb-1.0-0-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
-        to_install+=(libusb-1.0-0-dev)
+        debs_to_install+=(libusb-1.0-0-dev)
     fi
 
     # check for hidapi
     if [ $(apt -qq list libhidapi-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
-        to_install+=(libhidapi-dev)
+        debs_to_install+=(libhidapi-dev)
     fi
 
     # install packages with tools that were not found
-    if [ ${#to_install[*]} -eq 0 ]; then
+    if [ ${#debs_to_install[*]} -eq 0 ]; then
         echo "All required tools found, skipping."
     else
-        echo "Installing: ${to_install[*]}"
+        echo "Installing: ${debs_to_install[*]}"
         set -x
-        sudo apt-get install -qq --yes ${to_install[*]}
+        sudo apt-get install -qq --yes ${debs_to_install[*]}
         set +x
     fi
 }
