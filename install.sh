@@ -162,14 +162,15 @@ install_packages() {
 
 cmd_install_toolchain() {
     echo "Installing the toolchain... "
-    if [ ! -d ${PICO_TOOLCHAIN_PATH} ]; then
-        echo "Creating toolchain dir: ${PICO_TOOLCHAIN_PATH}"
-        mkdir -p ${PICO_TOOLCHAIN_PATH}
+    toolchain_path=$1
+    if [ ! -d $toolchain_path ]; then
+        echo "Creating toolchain dir: $toolchain_path"
+        mkdir -p $toolchain_path
     fi
 
-    if [ ! -d "${PICO_TOOLCHAIN_PATH}/${PICO_TOOLCHAIN_VERSION}" ]; then
+    if [ ! -d "$toolchain_path/${PICO_TOOLCHAIN_VERSION}" ]; then
         echo "Downloading the toolchain"
-        cd ${PICO_TOOLCHAIN_PATH} && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj
+        cd $toolchain_path && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj
     fi
 
     echo "Tolchain installation done."
