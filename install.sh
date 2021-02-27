@@ -52,7 +52,7 @@ setup_install_step() {
     while :; do
         echo -n "Install $name?"
         if [ $found -ne 1 ]; then
-            echo -n "[Y/n"
+            echo -n " [Y/n"
         else
             echo -n " Found at: $(dirname $(which $1)) [y/N"
         fi
@@ -104,10 +104,6 @@ setup_install_step openocd ${PICO_BINARY_PATH}
 setup_install_step picotool ${PICO_BINARY_PATH}
 setup_install_step code
 
-if [ $install_code -eq 1 ]; then
-    debs_to_install+=("code")
-fi
-
 assert_package_install() {
     package_name=$1
     # check for libusb
@@ -115,12 +111,6 @@ assert_package_install() {
         debs_to_install+=($package_name)
     fi
 }
-
-# install openocd's prerequisities
-if [ $install_openocd ]; then
-    assert_package_install libusb-1.0-0-dev
-    assert_package_install libhidapi-dev
-fi
 
 # installation helper methods
 install_packages() {
@@ -131,6 +121,8 @@ install_packages() {
         "gcc build-essential"
         "git git"
         "ninja ninja-build"
+        "gpg gpg"
+        "wget wget"
     )
 
     # look for the required tools, build list of packages to install
@@ -145,6 +137,17 @@ install_packages() {
             debs_to_install+=(${package_name})
         fi
     done
+
+    # check for https apt transport if installing code
+    if [ $install_code -eq 1 ]; then
+        assert_package_install apt-transport-https
+    fi
+
+    # install openocd's prerequisities
+    if [ $install_openocd ]; then
+        assert_package_install libusb-1.0-0-dev
+        assert_package_install libhidapi-dev
+    fi
 
     # install packages with tools that were not found
     if [ ${#debs_to_install[*]} -eq 0 ]; then
@@ -212,8 +215,36 @@ build() {
     cmake -S ${PICO_REPO_PATH}/${target} -B ${PICO_REPO_PATH}/build/${target} -G Ninja && cmake --build ${PICO_REPO_PATH}/build/${target}
 }
 
+cmd_install_code() {
+    echo "Installing Visual Studio Code"
+    
+    # add repo if needed
+    if [ $(grep -Er "^deb.*packages.microsoft.com/repos/code /etc/apt/sources.list*" | wc -l) -eq 0 ]; then
+        wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg
+        set -x
+        sudo install -o root -g root -m 644 /tmp/packages.microsoft.gpg /etc/apt/trusted.gpg.d/
+        sudo sh -c 'echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/trusted.gpg.d/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" > /etc/apt/sources.list.d/vscode.list'
+        sudo apt update
+        set +x
+    fi
+
+    # install VSC using apt
+    set -x
+    sudo apt install code
+    set +x
+}
+
 # installation process - check for packages
 install_packages
+
+# execute install steps
+for step in "${pico_install_steps[@]}"
+do
+    read step_name path <<< $step
+    echo "Executing install step: $step_name"
+    cmd_$step_name $path
+done
+exit 1
 
 # clone the repo
 if [ ! -z ${PICO_CLONE_REPO} ]; then
