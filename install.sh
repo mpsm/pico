@@ -160,7 +160,7 @@ install_packages() {
     fi
 }
 
-install_toolchain() {
+cmd_install_toolchain() {
     echo "Installing the toolchain... "
     if [ ! -d ${PICO_TOOLCHAIN_PATH} ]; then
         echo "Creating toolchain dir: ${PICO_TOOLCHAIN_PATH}"
@@ -234,17 +234,22 @@ cmd_install_code() {
     set +x
 }
 
+cmd_install_openocd() {
+    echo "Installing openocd"
+    openocd_install_path="$(dirname $1)"
+    openocd_config="--enable-cmsis-dap --enable-picoprobe --prefix=${openocd_install_path}"
+    openocd_path=${PICO_REPO_PATH}/openocd
+    cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc) && make install
+}
+
+cmd_install_picotool() {
+    echo "Installing picotool"
+    build picotool
+    cp ${PICO_REPO_PATH}/build/picotool/picotool $1
+}
+
 # installation process - check for packages
 install_packages
-
-# execute install steps
-for step in "${pico_install_steps[@]}"
-do
-    read step_name path <<< $step
-    echo "Executing install step: $step_name"
-    cmd_$step_name $path
-done
-exit 1
 
 # clone the repo
 if [ ! -z ${PICO_CLONE_REPO} ]; then
@@ -256,13 +261,17 @@ else
     git submodule update --init --recursive
 fi
 
+# execute install steps
+for step in "${pico_install_steps[@]}"
+do
+    read step_name path <<< $step
+    echo "Executing install step: $step_name"
+    cmd_$step_name $path
+done
+exit 1
+
 # setup paths
 setup_paths
-
-# install toolchain
-if [ ! -z ${PICO_INSTALL_TOOLCHAIN} ]; then
-    install_toolchain
-fi
 
 # build examples
 if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
@@ -273,16 +282,6 @@ else
     echo "Found examples dir, skipping."
 fi
 
-# build tools
-if [ ! -z ${PICO_INSTALL_PICOTOOL} ]; then
-    if [ -f ${PICO_BINARY_PATH}/picotool ]; then
-        echo "Picotool exists at installation path, skipping."
-    else
-        build picotool
-        cp ${PICO_REPO_PATH}/build/picotool/picotool ${PICO_BINARY_PATH}
-    fi
-fi
-
 # build picoprobe
 if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     build picoprobe
@@ -290,12 +289,4 @@ if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
-fi
-
-# build and install openocd
-if [ ! -z ${PICO_INSTALL_OPENOCD} ]; then
-    openocd_install_path="$(dirname ${PICO_BINARY_PATH})"
-    openocd_config="--enable-cmsis-dap --enable-picoprobe --prefix=${openocd_install_path}"
-    openocd_path=${PICO_REPO_PATH}/openocd
-    cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc) && make install
 fi
