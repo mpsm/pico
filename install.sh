@@ -108,6 +108,20 @@ if [ $install_code -eq 1 ]; then
     debs_to_install+=("code")
 fi
 
+assert_package_install() {
+    package_name=$1
+    # check for libusb
+    if [ $(apt -qq list $package_name 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
+        debs_to_install+=($package_name)
+    fi
+}
+
+# install openocd's prerequisities
+if [ $install_openocd ]; then
+    assert_package_install libusb-1.0-0-dev
+    assert_package_install libhidapi-dev
+fi
+
 # installation helper methods
 install_packages() {
     echo "Checking for required packages"
@@ -131,17 +145,6 @@ install_packages() {
             debs_to_install+=(${package_name})
         fi
     done
-
-    # TODO - refactor library checking
-    # check for libusb
-    if [ $(apt -qq list libusb-1.0-0-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
-        debs_to_install+=(libusb-1.0-0-dev)
-    fi
-
-    # check for hidapi
-    if [ $(apt -qq list libhidapi-dev 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
-        debs_to_install+=(libhidapi-dev)
-    fi
 
     # install packages with tools that were not found
     if [ ${#debs_to_install[*]} -eq 0 ]; then
