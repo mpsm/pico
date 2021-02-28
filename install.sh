@@ -298,7 +298,7 @@ cmd_install_code() {
     echo "Installing Visual Studio Code"
     
     # add repo if needed
-    if [ $(grep -Er "^deb.*packages.microsoft.com/repos/code /etc/apt/sources.list*" | wc -l) -eq 0 ]; then
+    if [ $(grep -Er "^deb.*packages.microsoft.com/repos/code" /etc/apt/sources.list* | wc -l) -eq 0 ]; then
         wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/packages.microsoft.gpg
         set -x
         sudo install -o root -g root -m 644 /tmp/packages.microsoft.gpg /etc/apt/trusted.gpg.d/
@@ -357,7 +357,6 @@ do
     echo "Executing install step: $step_name"
     cmd_$step_name $path
 done
-exit 1
 
 # setup paths
 setup_paths
