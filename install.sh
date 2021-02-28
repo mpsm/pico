@@ -109,6 +109,7 @@ install_tools
 # do we need to clone the repo?
 if [ $batch_mode -eq 0 ] && check_repo $root_dir; then
     echo "Valid installation repository found at: $root_dir"
+    PICO_REPO_PATH=$root_dir
 else
     echo -n "Where to clone the installation repository? [${PICO_REPO_PATH}]: "
     if [ $auto_mode -eq 1 ]; then
