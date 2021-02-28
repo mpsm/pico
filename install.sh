@@ -10,6 +10,7 @@ PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
 : ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
 : ${PICO_REPO_PATH="${HOME}/pico"}
 : ${PICO_BINARY_PATH="${HOME}/.local/bin"}
+: ${PICO_BASH_RC="${HOME}/.picorc"}
 
 # parse arguments
 PARAMS=""
@@ -145,6 +146,7 @@ fi
 
 declare -a pico_install_steps
 declare -a debs_to_install
+declare -a bin_paths
 
 setup_install_step() {
     # setup user-friendly name
@@ -213,6 +215,7 @@ setup_install_step() {
                 path=${userinput}
             fi
             pico_install_steps+=("install_$name $path")
+            bin_paths+=("$path")
         else
             pico_install_steps+=("install_$name")
         fi
@@ -255,36 +258,23 @@ cmd_install_toolchain() {
     echo "Tolchain installation done."
 }
 
-setup_paths()
-{
-    echo "Setting up paths"
+setup_paths() {
+    paths_to_add=""
+    for path in ${bin_paths[@]}; do
+        echo -n "Checking if path is set: $path .. "
+        if [ $(echo $PATH | tr ':' '\n' | sort | uniq | egrep "^${path}$" | wc -l) -eq 0 ]; then
+            echo "not found, adding."
+            paths_to_add="${path}:${paths_to_add}"
+        else
+            echo "found, skipping."
+        fi
+    done
 
-    bindir="${PICO_TOOLCHAIN_PATH}/${PICO_TOOLCHAIN_VERSION}/bin"
-    export PATH="${bindir}:${PATH}"
-    export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
-
-    case ${SHELL} in
-        */fish)
-            fishconfd="${HOME}/.config/fish/conf.d"
-            if [ ! -d ${fishconfd} ]; then
-                mkdir -p ${fishconfd}
-            fi
-            
-            fishconfig="${fishconfd}/pico.fish"
-            if [ ! -f ${fishconfig} ]; then
-                echo "set -g -x PATH \$PATH \"${bindir}\"" > ${fishconfig}
-                echo "set -g -x PICO_SDK_PATH \"${PICO_SDK_PATH}\"" >> ${fishconfig}
-            fi
-            ;;
-    esac
-
-    # install bash anyway
-    if [ $(grep "${bindir}" "${HOME}/.bashrc" | wc -l) -eq 0 ]; then
-        echo "export PATH=\"${bindir}:\$PATH\"" >> ${HOME}/.bashrc
-    fi
-
-    if [ $(grep PICO_SDK_PATH "${HOME}/.bashrc" | wc -l) -eq 0 ]; then
-        echo "export PICO_SDK_PATH=\"${PICO_SDK_PATH}\"" >> ${HOME}/.bashrc
+    # update shell configs
+    if [ -n "${paths_to_add}" ]; then
+        echo "Updating PATH variable with: ${paths_to_add}"
+        echo "export PATH=\"${paths_to_add}\$PATH\"" >> ${PICO_BASH_RC}
+        export PATH="${paths_to_add}:${PATH}"
     fi
 }
 
@@ -361,6 +351,15 @@ done
 
 # setup paths
 setup_paths
+
+# bash hook
+if [ $(egrep "^source ${PICO_BASH_RC}$" ${HOME}/.bashrc | wc -l) -eq 0 ]; then
+    echo "Hooking ${PICO_BASH_RC} to bash.rc config file ${HOME}/.bashrc"
+    echo "source ${PICO_BASH_RC}" >> ${HOME}/.bashrc
+fi
+if [ ! -f ${PICO_BASH_RC} ]; then
+    touch ${PICO_BASH_RC}
+fi
 
 # build examples
 if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
