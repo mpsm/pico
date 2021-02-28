@@ -275,6 +275,9 @@ setup_paths() {
         echo "Updating PATH variable with: ${paths_to_add}"
         echo "export PATH=\"${paths_to_add}\$PATH\"" >> ${PICO_BASH_RC}
         export PATH="${paths_to_add}:${PATH}"
+        readonly env_paths_changed=1
+    else
+        readonly env_paths_changed=0
     fi
 }
 
@@ -361,6 +364,19 @@ if [ ! -f ${PICO_BASH_RC} ]; then
     touch ${PICO_BASH_RC}
 fi
 
+# setup sdk path
+if [ -z "${PICO_SDK_PATH}" -o "${PICO_SDK_PATH}" != "${PICO_REPO_PATH}/sdk" ]; then
+    export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
+    if [ $( egrep "^export PICO_SDK_PATH.*" ${PICO_BASH_RC} | wc -l) -eq 0 ]; then
+        echo "export PICO_SDK_PATH=${PICO_SDK_PATH}" >> ${PICO_BASH_RC}
+    else
+        sed -i"" 's,export PICO_SDK_PATH.*,export PICO_SDK_PATH='${PICO_SDK_PATH}',' ${PICO_BASH_RC}
+    fi
+    readonly env_sdk_changed=1
+else
+    readonly env_sdk_changed=0
+fi
+
 # build examples
 if [ ! -d ${PICO_REPO_PATH}/uf2/examples ]; then
     build examples
@@ -377,4 +393,11 @@ if [ ! -f ${PICO_REPO_PATH}/uf2/picoprobe.uf2 ]; then
     cp ${PICO_REPO_PATH}/build/picoprobe/picoprobe.uf2 ${PICO_REPO_PATH}/uf2/
 else
     echo "Picoprobe exists, skipping."
+fi
+
+# warn about changed variables
+if [ $batch_mode -eq 0 ]; then
+    if [ $env_paths_changed -eq 1 -o $env_sdk_changed -eq 1 ]; then
+        echo "Re-login or source ${PICO_BASH_RC} to update environmental variables!"
+    fi
 fi
