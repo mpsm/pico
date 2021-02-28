@@ -13,6 +13,7 @@ PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
 
 # parse arguments
 PARAMS=""
+auto_mode=0
 while (( "$#" )); do
     case "$1" in
         -a|--auto)
@@ -48,13 +49,62 @@ if [ $auto_mode ]; then
     echo "Executing in auto mode."
 fi
 
-# TODO: make sure git is installed
 repo_hash="d1a50566bc82612ac753b193bf74"
 check_repo() {
     repodir="$1"
     dir_hash="$(cd $repodir && git log  --reverse --pretty="%h" 2>/dev/null | head -n 4 | tr -d '\n')"
     test "$repo_hash" = "$dir_hash"
 }
+
+check_binary() {
+    binary_name=$1
+    which ${binary_name} > /dev/null
+    return $?
+}
+
+# installation helper methods
+install_tools() {
+    echo "Checking for required packages"
+
+    declare -a debs_to_install
+    declare -a pico_packages=(
+        "cmake cmake"
+        "gcc build-essential"
+        "make build-essential"
+        "git git"
+        "ninja ninja-build"
+        "wget wget"
+    )
+
+    # look for the required tools, build list of packages to install
+    for package in "${pico_packages[@]}"
+    do
+        read binary package_name <<< $package
+        echo -n "Checking for application: $binary ... "
+        if check_binary $binary; then
+            echo "found"
+        else
+            echo "not found"
+            debs_to_install+=(${package_name})
+        fi
+    done
+
+    # install packages with tools that were not found
+    if [ ${#debs_to_install[*]} -eq 0 ]; then
+        echo "All required tools found, skipping."
+    else
+        echo "Installing: ${debs_to_install[*]}"
+        set -x
+        sudo apt update
+        sudo apt-get install -qq --yes ${debs_to_install[*]}
+        set +x
+        readonly apt_updated=1
+    fi
+}
+
+# install required tools
+echo "Checking for required tools"
+install_tools
 
 # do we need to clone the repo?
 if [ $batch_mode -eq 0 ] && check_repo $root_dir; then
@@ -91,13 +141,6 @@ else
         exit 2
     fi
 fi
-
-# various helper methods
-check_binary() {
-    binary_name=$1
-    which ${binary_name} > /dev/null
-    return $?
-}
 
 declare -a pico_install_steps
 declare -a debs_to_install
@@ -186,59 +229,12 @@ setup_install_step openocd ${PICO_BINARY_PATH}
 setup_install_step picotool ${PICO_BINARY_PATH}
 setup_install_step code
 
+declare -a packages_to_install
 assert_package_install() {
     package_name=$1
     # check for libusb
     if [ $(apt -qq list $package_name 2>/dev/null | grep installed | wc -l) -eq 0 ]; then
-        debs_to_install+=($package_name)
-    fi
-}
-
-# installation helper methods
-install_packages() {
-    echo "Checking for required packages"
-
-    declare -a pico_packages=(
-        "cmake cmake"
-        "gcc build-essential"
-        "git git"
-        "ninja ninja-build"
-        "gpg gpg"
-        "wget wget"
-    )
-
-    # look for the required tools, build list of packages to install
-    for package in "${pico_packages[@]}"
-    do
-        read binary package_name <<< $package
-        echo -n "Checking for application: $binary ... "
-        if check_binary $binary; then
-            echo "found"
-        else
-            echo "not found"
-            debs_to_install+=(${package_name})
-        fi
-    done
-
-    # check for https apt transport if installing code
-    if [ $install_code -eq 1 ]; then
-        assert_package_install apt-transport-https
-    fi
-
-    # install openocd's prerequisities
-    if [ $install_openocd ]; then
-        assert_package_install libusb-1.0-0-dev
-        assert_package_install libhidapi-dev
-    fi
-
-    # install packages with tools that were not found
-    if [ ${#debs_to_install[*]} -eq 0 ]; then
-        echo "All required tools found, skipping."
-    else
-        echo "Installing: ${debs_to_install[*]}"
-        set -x
-        sudo apt-get install -qq --yes ${debs_to_install[*]}
-        set +x
+        packages_to_install+=($package_name)
     fi
 }
 
@@ -317,6 +313,29 @@ cmd_install_code() {
     set +x
 }
 
+# check for https apt transport if installing code
+if [ $install_code -eq 1 ]; then
+    assert_package_install apt-transport-https
+    assert_package_install gpg
+fi
+
+# install openocd's prerequisities
+if [ $install_openocd ]; then
+    assert_package_install libusb-1.0-0-dev
+    assert_package_install libhidapi-dev
+fi
+
+# install packages if required
+if [ ${#packages_to_install[@]} -gt 0 ]; then
+    set -x
+    if [ "${apt_updated}" != "1" ]; then
+        sudo apt update
+        readonly apt_updated=1
+    fi
+    sudo apt install -qq --yes ${debs_to_install[*]}
+    set +x
+fi
+
 cmd_install_openocd() {
     echo "Installing openocd"
     openocd_install_path="$(dirname $1)"
@@ -330,9 +349,6 @@ cmd_install_picotool() {
     build picotool
     cp ${PICO_REPO_PATH}/build/picotool/picotool $1
 }
-
-# installation process - check for packages
-install_packages
 
 # execute install steps
 for step in "${pico_install_steps[@]}"
