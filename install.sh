@@ -138,6 +138,7 @@ else
         else
             ${PICO_REPO_PATH}/install.sh $* ${PICO_REPO_PATH}
         fi
+        exit 0
     else
         echo "Clone failed, aborting."
         exit 2
@@ -396,8 +397,6 @@ else
 fi
 
 # warn about changed variables
-if [ $batch_mode -eq 0 ]; then
-    if [ $env_paths_changed -eq 1 -o $env_sdk_changed -eq 1 ]; then
-        echo "Re-login or source ${PICO_BASH_RC} to update environmental variables!"
-    fi
+if [ $env_paths_changed -eq 1 -o $env_sdk_changed -eq 1 ]; then
+    echo "Re-login or source ${PICO_BASH_RC} to update environmental variables!"
 fi
