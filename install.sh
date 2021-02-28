@@ -1,5 +1,64 @@
 #!/usr/bin/bash
 
+# local variables
+PICO_REPO_URL="https://github.com/mpsm/pico"
+PICO_TOOLCHAIN_NAME="arm-none-eabi"
+PICO_TOOLCHAIN_LINK="https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2"
+PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
+
+# default values of setup settings
+: ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
+: ${PICO_REPO_PATH="${HOME}/pico"}
+: ${PICO_BINARY_PATH="${HOME}/.local/bin"}
+
+# check if executed in batch mode
+if [[ $0 =~ bash ]]; then
+    batch_mode=1
+else
+    batch_mode=0
+    root_dir="$(dirname $(realpath $0))"
+fi
+
+# TODO: make sure git is installed
+repo_hash="4c83381cce90035a4c10dead8020"
+check_repo(){
+    repodir="$1"
+    dir_hash="$(cd $repodir && git log -4 --reverse --pretty="%h" 2>/dev/null | tr -d '\n')"
+    test "$repo_hash" = "$dir_hash"
+}
+
+# do we need to clone the repo?
+if [ $batch_mode -eq 0 ] && check_repo $root_dir; then
+    echo "Valid installation repository found at: $root_dir"
+else
+    echo "Where to clone the installation repository? [${PICO_REPO_PATH}]: "
+    read userinput
+    if [ -n "${userinput}" ]; then
+        PICO_REPO_PATH="${userinput}"
+    fi
+
+    # sanity check
+    if [ -e "${PICO_REPO_PATH}" ]; then
+        echo "Repository exists, aborting."
+        exit 1
+    fi
+
+    # clone the repo and execute newest version of the installation script
+    echo "Cloning installation repository to: ${PICO_REPO_PATH}"
+    #git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
+    git clone ${PICO_REPO_URL} ${PICO_REPO_PATH}
+    if [ $? -eq 0 ]; then
+        echo "Executing current installation script."
+        ${PICO_REPO_PATH}/install.sh $*
+    else
+        echo "Clone failed, aborting."
+        exit 2
+    fi
+fi
+
+# XXX: still under development, do not run
+exit 1
+
 # check if executing from the repository
 scriptname="$(basename $0)"
 if [ ${scriptname} == "bash" ]; then
@@ -11,17 +70,6 @@ else
         PICO_REPO_PATH="$(realpath $(dirname $0))"
     fi
 fi
-
-# local variables
-PICO_REPO_URL="https://github.com/mpsm/pico"
-PICO_TOOLCHAIN_NAME="arm-none-eabi"
-PICO_TOOLCHAIN_LINK="https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major-x86_64-linux.tar.bz2"
-PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
-
-# default values of setup settings
-: ${PICO_TOOLCHAIN_PATH="${HOME}/toolchain/${PICO_TOOLCHAIN_NAME}"}
-: ${PICO_REPO_PATH="${HOME}/pico"}
-: ${PICO_BINARY_PATH="${HOME}/.local/bin"}
 
 # various helper methods
 check_binary() {
@@ -251,16 +299,6 @@ cmd_install_picotool() {
 
 # installation process - check for packages
 install_packages
-
-# clone the repo
-if [ ! -z ${PICO_CLONE_REPO} ]; then
-    echo "Cloning the bundle repository"
-    git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
-else
-    # make sure submodules are up to date
-    echo "Making sure submodules are up to date"
-    git submodule update --init --recursive
-fi
 
 # execute install steps
 for step in "${pico_install_steps[@]}"
