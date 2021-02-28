@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/bash -x
 
 # local variables
 PICO_REPO_URL="https://github.com/mpsm/pico"
@@ -16,14 +16,18 @@ if [[ $0 =~ bash ]]; then
     batch_mode=1
 else
     batch_mode=0
-    root_dir="$(dirname $(realpath $0))"
+    if [ -z "$1" ]; then
+        root_dir="$(dirname $(realpath $0))"
+    else
+        root_dir="$1"
+    fi
 fi
 
 # TODO: make sure git is installed
-repo_hash="4c83381cce90035a4c10dead8020"
-check_repo(){
+repo_hash="d1a50566bc82612ac753b193bf74"
+check_repo() {
     repodir="$1"
-    dir_hash="$(cd $repodir && git log -4 --reverse --pretty="%h" 2>/dev/null | tr -d '\n')"
+    dir_hash="$(cd $repodir && git log  --reverse --pretty="%h" 2>/dev/null | head -n 4 | tr -d '\n')"
     test "$repo_hash" = "$dir_hash"
 }
 
@@ -31,10 +35,14 @@ check_repo(){
 if [ $batch_mode -eq 0 ] && check_repo $root_dir; then
     echo "Valid installation repository found at: $root_dir"
 else
-    echo "Where to clone the installation repository? [${PICO_REPO_PATH}]: "
-    read userinput
-    if [ -n "${userinput}" ]; then
-        PICO_REPO_PATH="${userinput}"
+    echo -n "Where to clone the installation repository? [${PICO_REPO_PATH}]: "
+    if [ $batch_mode -eq 1 ]; then
+        echo ${PICO_REPO_PATH}
+    else
+        read userinput
+        if [ -n "${userinput}" ]; then
+            PICO_REPO_PATH="${userinput}"
+        fi
     fi
 
     # sanity check
@@ -46,10 +54,10 @@ else
     # clone the repo and execute newest version of the installation script
     echo "Cloning installation repository to: ${PICO_REPO_PATH}"
     #git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
-    git clone ${PICO_REPO_URL} ${PICO_REPO_PATH}
+    git clone $(pwd) ${PICO_REPO_PATH}
     if [ $? -eq 0 ]; then
         echo "Executing current installation script."
-        ${PICO_REPO_PATH}/install.sh $*
+        ${PICO_REPO_PATH}/install.sh ${PICO_REPO_PATH}
     else
         echo "Clone failed, aborting."
         exit 2
