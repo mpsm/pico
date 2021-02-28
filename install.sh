@@ -1,4 +1,4 @@
-#!/usr/bin/bash -x
+#!/usr/bin/bash
 
 # local variables
 PICO_REPO_URL="https://github.com/mpsm/pico"
@@ -11,9 +11,30 @@ PICO_TOOLCHAIN_VERSION="gcc-arm-none-eabi-10-2020-q4-major"
 : ${PICO_REPO_PATH="${HOME}/pico"}
 : ${PICO_BINARY_PATH="${HOME}/.local/bin"}
 
+# parse arguments
+PARAMS=""
+while (( "$#" )); do
+    case "$1" in
+        -a|--auto)
+            auto_mode=1
+            shift
+            ;;
+        -h|--help)
+            echo "TODO: help"
+            exit 0
+            ;;
+        *)
+            PARAMS="${PARAMS} $1"
+            shift
+            ;;
+    esac
+done
+eval set -- "${PARAMS}"
+
 # check if executed in batch mode
 if [[ $0 =~ bash ]]; then
     batch_mode=1
+    auto_mode=1
 else
     batch_mode=0
     if [ -z "$1" ]; then
@@ -21,6 +42,10 @@ else
     else
         root_dir="$1"
     fi
+fi
+
+if [ $auto_mode ]; then
+    echo "Executing in auto mode."
 fi
 
 # TODO: make sure git is installed
@@ -36,7 +61,7 @@ if [ $batch_mode -eq 0 ] && check_repo $root_dir; then
     echo "Valid installation repository found at: $root_dir"
 else
     echo -n "Where to clone the installation repository? [${PICO_REPO_PATH}]: "
-    if [ $batch_mode -eq 1 ]; then
+    if [ $auto_mode -eq 1 ]; then
         echo ${PICO_REPO_PATH}
     else
         read userinput
@@ -53,29 +78,17 @@ else
 
     # clone the repo and execute newest version of the installation script
     echo "Cloning installation repository to: ${PICO_REPO_PATH}"
-    #git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
-    git clone $(pwd) ${PICO_REPO_PATH}
+    git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
     if [ $? -eq 0 ]; then
         echo "Executing current installation script."
-        ${PICO_REPO_PATH}/install.sh ${PICO_REPO_PATH}
+        if [ $batch_mode -eq 1 ]; then
+            ${PICO_REPO_PATH}/install.sh --auto ${PICO_REPO_PATH}
+        else
+            ${PICO_REPO_PATH}/install.sh $* ${PICO_REPO_PATH}
+        fi
     else
         echo "Clone failed, aborting."
         exit 2
-    fi
-fi
-
-# XXX: still under development, do not run
-exit 1
-
-# check if executing from the repository
-scriptname="$(basename $0)"
-if [ ${scriptname} == "bash" ]; then
-    PICO_CLONE_REPO=1
-else
-    if [ ! -d "$(dirname $0)/.git" ]; then
-        PICO_CLONE_REPO=1
-    else
-        PICO_REPO_PATH="$(realpath $(dirname $0))"
     fi
 fi
 
@@ -114,7 +127,16 @@ setup_install_step() {
         fi
         echo -n "] "
 
-        read userinput
+        if [ $auto_mode -eq 1 ]; then
+            if [ $found -eq 1 ]; then
+                echo "N"
+            else
+                echo "Y"
+            fi
+        else
+            read userinput
+        fi
+
         if [ -z "$userinput" ]; then
             decision=$((1-$found))
             break
@@ -136,7 +158,11 @@ setup_install_step() {
     if [ $decision -eq 1 ]; then
         if [ ! -z "$2" ]; then
             echo -n "Install path for $name [$2]: "
-            read userinput
+            if [ $auto_mode -eq 1 ]; then
+                echo "$2"
+            else
+                read userinput
+            fi
             if [ -z "${userinput}" ]; then
                 path=$2
             else
