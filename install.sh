@@ -242,17 +242,35 @@ assert_package_install() {
     fi
 }
 
+safe_install() {
+    destination="$1"
+    install_cmd="$2"
+
+    # create destination directory
+    mkdir_failed=0
+    if [ ! -d $destination ]; then
+        mkdir -p $destination 2>/dev/null
+        mkdir_failed=$?
+    fi
+
+    # eval (with sudo if needed)
+    touch $destination 2>/dev/null
+    if [ $? -ne 0 ] || [ $mkdir_failed -ne 0 ]; then
+        set -x
+        sudo bash -c "$install_cmd"
+        set +x
+    else
+        eval $install_cmd
+    fi
+}
+
 cmd_install_toolchain() {
     echo "Installing the toolchain... "
     toolchain_path=$1
-    if [ ! -d $toolchain_path ]; then
-        echo "Creating toolchain dir: $toolchain_path"
-        mkdir -p $toolchain_path
-    fi
 
     if [ ! -d "$toolchain_path/${PICO_TOOLCHAIN_VERSION}" ]; then
         echo "Downloading the toolchain"
-        cd $toolchain_path && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj
+        safe_install $toolchain_path "cd $toolchain_path && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj"
     fi
 
     bin_paths+=("$toolchain_path/${PICO_TOOLCHAIN_VERSION}/bin")
@@ -337,14 +355,15 @@ cmd_install_openocd() {
     openocd_install_path="$(dirname $1)"
     openocd_config="--enable-cmsis-dap --enable-picoprobe --prefix=${openocd_install_path}"
     openocd_path=${PICO_REPO_PATH}/openocd
-    cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc) && make install
+    cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc)
+    safe_install $openocd_install_path "make -C ${openocd_path} install"
     bin_paths+=("${openocd_install_path}/bin")
 }
 
 cmd_install_picotool() {
     echo "Installing picotool"
     build picotool
-    cp ${PICO_REPO_PATH}/build/picotool/picotool $1
+    safe_install $1 "cp ${PICO_REPO_PATH}/build/picotool/picotool $1"
     bin_paths+=("$1")
 }
 
