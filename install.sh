@@ -216,7 +216,6 @@ setup_install_step() {
                 path=${userinput}
             fi
             pico_install_steps+=("install_$name $path")
-            bin_paths+=("$path")
         else
             pico_install_steps+=("install_$name")
         fi
@@ -255,6 +254,8 @@ cmd_install_toolchain() {
         echo "Downloading the toolchain"
         cd $toolchain_path && wget --no-verbose --show-progress -O- ${PICO_TOOLCHAIN_LINK} | tar xj
     fi
+
+    bin_paths+=("$toolchain_path/${PICO_TOOLCHAIN_VERSION}/bin")
 
     echo "Tolchain installation done."
 }
@@ -337,12 +338,14 @@ cmd_install_openocd() {
     openocd_config="--enable-cmsis-dap --enable-picoprobe --prefix=${openocd_install_path}"
     openocd_path=${PICO_REPO_PATH}/openocd
     cd ${openocd_path} && ./bootstrap && ./configure ${openocd_config} && make -j $(nproc) && make install
+    bin_paths+=("${openocd_install_path}/bin")
 }
 
 cmd_install_picotool() {
     echo "Installing picotool"
     build picotool
     cp ${PICO_REPO_PATH}/build/picotool/picotool $1
+    bin_paths+=("$1")
 }
 
 # execute install steps
