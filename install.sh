@@ -347,7 +347,7 @@ if [ ${#packages_to_install[@]} -gt 0 ]; then
         sudo apt update
         readonly apt_updated=1
     fi
-    sudo apt install -qq --yes ${debs_to_install[*]}
+    sudo apt install -qq --yes ${packages_to_install[*]}
     set +x
 fi
 
