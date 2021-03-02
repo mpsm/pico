@@ -130,7 +130,7 @@ else
 
     # clone the repo and execute newest version of the installation script
     echo "Cloning installation repository to: ${PICO_REPO_PATH}"
-    git clone --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
+    git clone -j $(nproc) --recurse-submodules ${PICO_REPO_URL} ${PICO_REPO_PATH}
     if [ $? -eq 0 ]; then
         echo "Executing current installation script."
         if [ $batch_mode -eq 1 ]; then
