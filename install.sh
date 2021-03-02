@@ -337,6 +337,7 @@ fi
 if [ $install_openocd ]; then
     assert_package_install libusb-1.0-0-dev
     assert_package_install libhidapi-dev
+    assert_package_install libtool
 fi
 
 # install packages if required
