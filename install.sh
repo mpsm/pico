@@ -367,6 +367,19 @@ cmd_install_picotool() {
     bin_paths+=("$1")
 }
 
+# setup sdk path
+if [ -z "${PICO_SDK_PATH}" -o "${PICO_SDK_PATH}" != "${PICO_REPO_PATH}/sdk" ]; then
+    export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
+    if [ $( egrep "^export PICO_SDK_PATH.*" ${PICO_BASH_RC} | wc -l) -eq 0 ]; then
+        echo "export PICO_SDK_PATH=${PICO_SDK_PATH}" >> ${PICO_BASH_RC}
+    else
+        sed -i"" 's,export PICO_SDK_PATH.*,export PICO_SDK_PATH='${PICO_SDK_PATH}',' ${PICO_BASH_RC}
+    fi
+    readonly env_sdk_changed=1
+else
+    readonly env_sdk_changed=0
+fi
+
 # execute install steps
 for step in "${pico_install_steps[@]}"
 do
@@ -385,19 +398,6 @@ if [ $(egrep "^source ${PICO_BASH_RC}$" ${HOME}/.bashrc | wc -l) -eq 0 ]; then
 fi
 if [ ! -f ${PICO_BASH_RC} ]; then
     touch ${PICO_BASH_RC}
-fi
-
-# setup sdk path
-if [ -z "${PICO_SDK_PATH}" -o "${PICO_SDK_PATH}" != "${PICO_REPO_PATH}/sdk" ]; then
-    export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
-    if [ $( egrep "^export PICO_SDK_PATH.*" ${PICO_BASH_RC} | wc -l) -eq 0 ]; then
-        echo "export PICO_SDK_PATH=${PICO_SDK_PATH}" >> ${PICO_BASH_RC}
-    else
-        sed -i"" 's,export PICO_SDK_PATH.*,export PICO_SDK_PATH='${PICO_SDK_PATH}',' ${PICO_BASH_RC}
-    fi
-    readonly env_sdk_changed=1
-else
-    readonly env_sdk_changed=0
 fi
 
 # build examples
