@@ -12,5 +12,5 @@
 	url = https://github.com/raspberrypi/picotool
 [submodule "openocd"]
 	path = openocd
-	url = https://github.com/raspberrypi/openocd
-	branch = picoprobe
+	url = https://github.com/mpsm/pico-openocd
+	branch = rp2040
