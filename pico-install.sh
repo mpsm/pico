@@ -371,7 +371,7 @@ cmd_install_picotool() {
 # setup sdk path
 if [ -z "${PICO_SDK_PATH}" -o "${PICO_SDK_PATH}" != "${PICO_REPO_PATH}/sdk" ]; then
     export PICO_SDK_PATH="${PICO_REPO_PATH}/sdk"
-    if [ $( egrep "^export PICO_SDK_PATH.*" ${PICO_BASH_RC} | wc -l) -eq 0 ]; then
+    if [ ! -f ${PICO_BASH_RC} ] || [ $( egrep "^export PICO_SDK_PATH.*" ${PICO_BASH_RC} | wc -l) -eq 0 ]; then
         echo "export PICO_SDK_PATH=${PICO_SDK_PATH}" >> ${PICO_BASH_RC}
     else
         sed -i"" 's,export PICO_SDK_PATH.*,export PICO_SDK_PATH='${PICO_SDK_PATH}',' ${PICO_BASH_RC}
