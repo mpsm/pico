@@ -134,9 +134,9 @@ else
     if [ $? -eq 0 ]; then
         echo "Executing current installation script."
         if [ $batch_mode -eq 1 ]; then
-            ${PICO_REPO_PATH}/install.sh --auto ${PICO_REPO_PATH}
+            ${PICO_REPO_PATH}/pico-install.sh --auto ${PICO_REPO_PATH}
         else
-            ${PICO_REPO_PATH}/install.sh $* ${PICO_REPO_PATH}
+            ${PICO_REPO_PATH}/pico-install.sh $* ${PICO_REPO_PATH}
         fi
         exit 0
     else
